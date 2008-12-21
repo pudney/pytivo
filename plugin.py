@@ -159,17 +159,25 @@ class Plugin(object):
 
         totalFiles = len(files)
 
-        def dir_sort(x, y):
-            xdir = os.path.isdir(os.path.join(path, x))
-            ydir = os.path.isdir(os.path.join(path, y))
+        def dir_sort(x, y, sortOrder):
+            xpath = os.path.join(path, x)
+            ypath = os.path.join(path, y)
+            xdir = os.path.isdir(xpath)
+            ydir = os.path.isdir(ypath)
 
             if xdir == ydir:
-                return name_sort(x, y)
+                if sortOrder == 'mtime':
+                  return modified_by_sort(xpath, ypath)
+                else:
+                  return name_sort(x, y)
             else:
                 return ydir - xdir
 
         def name_sort(x, y):
             return cmp(x, y)
+
+        def modified_by_sort(xpath, ypath):
+            return cmp(os.path.getmtime(ypath), os.path.getmtime(xpath))
 
         if query.get('SortOrder',['Normal'])[0] == 'Random':
             seed = query.get('RandomSeed', ['1'])[0]
@@ -177,8 +185,10 @@ class Plugin(object):
             random.seed(seed)
             random.shuffle(files)
             self.random_lock.release()
+        elif query.get('SortOrder',['Normal'])[0] == '!CaptureDate':
+            files.sort(lambda x, y: dir_sort(x, y, 'mtime'))
         else:
-            files.sort(dir_sort)
+            files.sort(lambda x, y: dir_sort(x, y, 'name'))
 
         # Trim the list
         return self.item_count(handler, query, cname, files)
